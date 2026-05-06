@@ -7,6 +7,8 @@ Public API:
     from luminark import LyapunovController, NumericalConstitution
     from luminark import SAPPsychiatrist, SAPDiagnosis
     from luminark import LuminarkLiveBridge, ExecutionMode, GovernanceVerdict
+    from luminark import Stage8Chamber, Stage5Bifurcation, Stage9Action
+    from luminark import VESSEL_OF_GROUNDING_TRAP_AMPLIFIER
 """
 
 from luminark.luminark_live_bridge import (
@@ -17,7 +19,24 @@ from luminark.luminark_live_bridge import (
 )
 from luminark.sap_constrained_bayesian import (
     SAPConstrainedBayesian,
+)
+from luminark.sap_energy import (
     SAPEnergy,
+    SAPEnergyResult,
+    Stage8Chamber,
+    Stage8TrapResult,
+    Stage5Bifurcation,
+    Stage5BifurcationResult,
+    Stage9Action,
+    VESSEL_OF_GROUNDING_TRAP_AMPLIFIER,
+    VESSEL_OF_GROUNDING_CHAMBER_A,
+    VESSEL_OF_GROUNDING_CHAMBER_B,
+    VESSEL_OF_GROUNDING_CONSTRUCT,
+    DYNAMO_OF_WILL_ADVANCE_THRESHOLD,
+    DYNAMO_OF_WILL_RETREAT_THRESHOLD,
+    TRANSPARENCY_DISSOLUTION_COHERENCE_MIN,
+    TRANSPARENCY_DISSOLUTION_ADAPTABILITY_MIN,
+    TRANSPARENCY_DISSOLUTION_TENSION_MAX,
 )
 from luminark.sap_geometry_engine import (
     ADJACENCY_MATRIX,
@@ -50,9 +69,25 @@ __all__ = [
     "ADJACENCY_MATRIX",
     "AXIS_WEIGHTS",
     "AXIS_SCALES",
-    # Bayesian + Energy
+    # Bayesian
     "SAPConstrainedBayesian",
+    # Energy — canonical sap_energy module
     "SAPEnergy",
+    "SAPEnergyResult",
+    "Stage8Chamber",
+    "Stage8TrapResult",
+    "Stage5Bifurcation",
+    "Stage5BifurcationResult",
+    "Stage9Action",
+    "VESSEL_OF_GROUNDING_TRAP_AMPLIFIER",
+    "VESSEL_OF_GROUNDING_CHAMBER_A",
+    "VESSEL_OF_GROUNDING_CHAMBER_B",
+    "VESSEL_OF_GROUNDING_CONSTRUCT",
+    "DYNAMO_OF_WILL_ADVANCE_THRESHOLD",
+    "DYNAMO_OF_WILL_RETREAT_THRESHOLD",
+    "TRANSPARENCY_DISSOLUTION_COHERENCE_MIN",
+    "TRANSPARENCY_DISSOLUTION_ADAPTABILITY_MIN",
+    "TRANSPARENCY_DISSOLUTION_TENSION_MAX",
     # Lyapunov
     "LyapunovController",
     "LyapunovVulnerabilityScanner",
