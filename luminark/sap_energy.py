@@ -15,6 +15,7 @@ Constitutional Directives:
 © 2026 Richard L. Stanfield / Meridian Axiom Alignment Technologies LLC
 Contact: LuminarkMeridian@gmail.com
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -56,36 +57,42 @@ TRANSPARENCY_DISSOLUTION_TENSION_MAX: float = 20.0
 
 # ─── Enums ────────────────────────────────────────────────────────────────────
 
+
 class Stage8Chamber(Enum):
     """Stage 8 Dual-Chamber Trap — which chamber is active."""
+
     CHAMBER_A = "Illusion of Arrival"
     CHAMBER_B = "Illusion of Permanence"
 
 
 class Stage5Bifurcation(Enum):
     """Stage 5 (DYNAMO OF WILL) — the only stage where the doorway opens backward."""
-    ADVANCE = "ADVANCE"   # Middle Path Gateway — ascending arc toward Stage 6
-    RETREAT = "RETREAT"   # Backward doorway — regression to Stage 4 or lower
-    FREEZE  = "FREEZE"    # Threshold paralysis — insufficient coherence to determine arc
+
+    ADVANCE = "ADVANCE"  # Middle Path Gateway — ascending arc toward Stage 6
+    RETREAT = "RETREAT"  # Backward doorway — regression to Stage 4 or lower
+    FREEZE = "FREEZE"  # Threshold paralysis — insufficient coherence to determine arc
 
 
 class Stage9Action(Enum):
     """Stage 9 (TRANSPARENCY OF THE GUIDE) dissolution state."""
+
     DISSOLVE_TO_PLENARA = "DISSOLVE_TO_PLENARA"  # Torus completion → return to Stage 0
-    HARROWING_HOLD      = "HARROWING_HOLD"        # Dissolution incomplete; Stage 9 continues
+    HARROWING_HOLD = "HARROWING_HOLD"  # Dissolution incomplete; Stage 9 continues
 
 
 # ─── Result Dataclasses ───────────────────────────────────────────────────────
 
+
 @dataclass
 class Stage8TrapResult:
     """Full output of the Stage 8 Dual-Chamber Trap computation."""
+
     raw_trap_score: float
-    amplified_trap_score: float          # raw × VESSEL_OF_GROUNDING_TRAP_AMPLIFIER
+    amplified_trap_score: float  # raw × VESSEL_OF_GROUNDING_TRAP_AMPLIFIER
     active_chamber: Stage8Chamber
-    chamber_label: str                   # Human-readable chamber name (never deprecated terms)
-    tension_gradient: float              # Directional pressure in [−1.0, +1.0]
-    exit_watch: bool                     # True when amplified_trap_score > 80.0
+    chamber_label: str  # Human-readable chamber name (never deprecated terms)
+    tension_gradient: float  # Directional pressure in [−1.0, +1.0]
+    exit_watch: bool  # True when amplified_trap_score > 80.0
     gratitude_resonance_available: bool  # True when |S − T| ≤ 20 (both chambers acknowledged)
     recommended_action: str
 
@@ -93,10 +100,11 @@ class Stage8TrapResult:
 @dataclass
 class Stage5BifurcationResult:
     """Full output of the Stage 5 bifurcation analysis."""
+
     bifurcation: Stage5Bifurcation
     coherence_reading: float
-    stability_delta: float               # S − D (stability minus adaptability)
-    arc_direction: str                   # "ascending" | "descending" | "frozen"
+    stability_delta: float  # S − D (stability minus adaptability)
+    arc_direction: str  # "ascending" | "descending" | "frozen"
     recommended_action: str
 
 
@@ -110,6 +118,7 @@ class SAPEnergyResult:
     For stage 9: stage9_action is populated.
     All other stages: energy_note is populated only.
     """
+
     stage: int
     stage8_trap: Stage8TrapResult | None = None
     stage5_bifurcation: Stage5BifurcationResult | None = None
@@ -118,6 +127,7 @@ class SAPEnergyResult:
 
 
 # ─── SAPEnergy ────────────────────────────────────────────────────────────────
+
 
 class SAPEnergy:
     """
@@ -234,7 +244,7 @@ class SAPEnergy:
 
         # Chamber routing
         stability_advantage = s - c
-        tension_dominance   = t - c
+        tension_dominance = t - c
         if stability_advantage > tension_dominance:
             chamber = Stage8Chamber.CHAMBER_A
         else:
