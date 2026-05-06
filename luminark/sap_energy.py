@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 # ─── Canonical Constants ──────────────────────────────────────────────────────
 
@@ -112,9 +111,9 @@ class SAPEnergyResult:
     All other stages: energy_note is populated only.
     """
     stage: int
-    stage8_trap: Optional[Stage8TrapResult] = None
-    stage5_bifurcation: Optional[Stage5BifurcationResult] = None
-    stage9_action: Optional[Stage9Action] = None
+    stage8_trap: Stage8TrapResult | None = None
+    stage5_bifurcation: Stage5BifurcationResult | None = None
+    stage9_action: Stage9Action | None = None
     energy_note: str = ""
 
 
@@ -255,9 +254,9 @@ class SAPEnergy:
             )
         elif exit_watch:
             action = (
-                "EXIT WATCH ACTIVE — TrapScore critical ({:.1f}). "
+                f"EXIT WATCH ACTIVE — TrapScore critical ({amplified:.1f}). "
                 "Immediate coherence elevation required. "
-                "Stage 9 dissolution risk is present.".format(amplified)
+                "Stage 9 dissolution risk is present."
             )
         else:
             action = (

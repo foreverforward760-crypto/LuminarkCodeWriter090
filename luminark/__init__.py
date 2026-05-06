@@ -17,26 +17,24 @@ from luminark.luminark_live_bridge import (
     GovernanceVerdict,
     LuminarkLiveBridge,
 )
-from luminark.sap_constrained_bayesian import (
-    SAPConstrainedBayesian,
-)
+from luminark.sap_constrained_bayesian import SAPConstrainedBayesian
 from luminark.sap_energy import (
-    SAPEnergy,
-    SAPEnergyResult,
-    Stage8Chamber,
-    Stage8TrapResult,
-    Stage5Bifurcation,
-    Stage5BifurcationResult,
-    Stage9Action,
-    VESSEL_OF_GROUNDING_TRAP_AMPLIFIER,
+    DYNAMO_OF_WILL_ADVANCE_THRESHOLD,
+    DYNAMO_OF_WILL_RETREAT_THRESHOLD,
+    TRANSPARENCY_DISSOLUTION_ADAPTABILITY_MIN,
+    TRANSPARENCY_DISSOLUTION_COHERENCE_MIN,
+    TRANSPARENCY_DISSOLUTION_TENSION_MAX,
     VESSEL_OF_GROUNDING_CHAMBER_A,
     VESSEL_OF_GROUNDING_CHAMBER_B,
     VESSEL_OF_GROUNDING_CONSTRUCT,
-    DYNAMO_OF_WILL_ADVANCE_THRESHOLD,
-    DYNAMO_OF_WILL_RETREAT_THRESHOLD,
-    TRANSPARENCY_DISSOLUTION_COHERENCE_MIN,
-    TRANSPARENCY_DISSOLUTION_ADAPTABILITY_MIN,
-    TRANSPARENCY_DISSOLUTION_TENSION_MAX,
+    VESSEL_OF_GROUNDING_TRAP_AMPLIFIER,
+    SAPEnergy,
+    SAPEnergyResult,
+    Stage5Bifurcation,
+    Stage5BifurcationResult,
+    Stage8Chamber,
+    Stage8TrapResult,
+    Stage9Action,
 )
 from luminark.sap_geometry_engine import (
     ADJACENCY_MATRIX,
