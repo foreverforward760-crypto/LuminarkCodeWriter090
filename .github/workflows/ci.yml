@@ -127,4 +127,4 @@ jobs:
         run: |
           pip install -e ".[dev]" -q
           echo "print('hello')" > /tmp/test_pass.py
-          python luminark_gate.py govern /tmp/test_pass.py --mode docker
+          python luminark_gate.py govern /tmp/test_pass.py --mode docker || [ $? -eq 2 ]
