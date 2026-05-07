@@ -22,6 +22,8 @@ dependencies = [
     "uvicorn>=0.23",
     "slowapi>=0.1.9",
     "redis>=5.0",
+    # Canonical LASE luminark package — SAP constants, energy layer, stage enums
+    "luminark @ git+https://github.com/foreverforward760-crypto/LUMINARK-Axiom-Systems-Engine-LASE-v1.1.git#subdirectory=core",
 ]
 
 [project.optional-dependencies]
