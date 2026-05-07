@@ -29,11 +29,15 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from typing import Optional
 
 import redis
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from luminark_live_bridge import (
     ExecutionMode,
@@ -48,18 +52,30 @@ logging.basicConfig(
 
 # ── Configuration from environment ────────────────────────────────────────────
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
-DOCKER_IMAGE = os.getenv("LUMINARK_DOCKER_IMAGE", "luminark-sandbox:latest")
-MAX_ITERATIONS = int(os.getenv("LUMINARK_MAX_ITERATIONS", "3"))
-EXEC_MODE = os.getenv("LUMINARK_MODE", "docker")
-STABILITY_THRESHOLD = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
+REDIS_URL            = os.getenv("REDIS_URL",                    "redis://redis:6379")
+DOCKER_IMAGE         = os.getenv("LUMINARK_DOCKER_IMAGE",        "luminark-sandbox:latest")
+MAX_ITERATIONS       = int(os.getenv("LUMINARK_MAX_ITERATIONS",  "3"))
+EXEC_MODE            = os.getenv("LUMINARK_MODE",                "docker")
+STABILITY_THRESHOLD  = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
+CODEWRITER_API_KEY   = os.getenv("CODEWRITER_API_KEY",           "codewriter-key-change-me")
+CODEWRITER_DEMO_KEY  = os.getenv("CODEWRITER_DEMO_KEY",          "codewriter-demo-public")
 
 # Redis key prefixes
-_KEY_V_SERIES = "luminark:v_series:{ctx}"  # list of floats
-_KEY_STAGE_SEQ = "luminark:stage_seq:{ctx}"  # list of ints
-_KEY_AUDIT = "luminark:audit:{ctx}"  # list of JSON strings
-_KEY_LATEST = "luminark:latest:{ctx}"  # JSON of latest result
-_KEY_VERDICT_CTR = "luminark:verdicts:{verdict}"  # global counters
+_KEY_V_SERIES    = "luminark:v_series:{ctx}"
+_KEY_STAGE_SEQ   = "luminark:stage_seq:{ctx}"
+_KEY_AUDIT       = "luminark:audit:{ctx}"
+_KEY_LATEST      = "luminark:latest:{ctx}"
+_KEY_VERDICT_CTR = "luminark:verdicts:{verdict}"
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+def verify_api_key(x_codewriter_api_key: Optional[str] = Header(None)) -> str:
+    if x_codewriter_api_key not in (CODEWRITER_API_KEY, CODEWRITER_DEMO_KEY):
+        raise HTTPException(status_code=401, detail="Invalid or missing X-CODEWRITER-API-KEY")
+    return x_codewriter_api_key
+
+# ── Rate limiter ──────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
 
 # ── Redis client ──────────────────────────────────────────────────────────────
 
@@ -119,9 +135,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[os.getenv("CORS_ORIGIN", "http://localhost:3000")],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -188,35 +207,28 @@ def _persist_telemetry(r: redis.Redis | None, context_id: str, result_dict: dict
 
 
 @app.post("/govern")
-def govern(request: GovernRequest):
+@limiter.limit("20/minute")
+def govern(request: Request, body: GovernRequest, api_key: str = Depends(verify_api_key)):
     """
     Run the full LUMINARK governance loop on submitted code.
-
-    1. Execute code in the sandbox (Docker or LOCAL).
-    2. Extract NSDT vector from execution behaviour.
-    3. Evaluate Lyapunov stability (Numerical Constitution).
-    4. If FAIL: SAPPsychiatrist generates a Surgical Prompt.
-    5. Repair and retry up to max_iterations.
-    6. Persist full telemetry to Redis.
-    7. Return GovernanceResult as JSON.
+    Requires X-CODEWRITER-API-KEY header. Rate limited: 20/minute.
     """
     bridge = _get_bridge()
     r = _get_redis()
 
     try:
         result = bridge.govern(
-            code=request.code,
-            task_description=request.task_description,
-            prev_stage=request.prev_stage,
+            code=body.code,
+            task_description=body.task_description,
+            prev_stage=body.prev_stage,
         )
     except Exception as exc:
         logger.error(f"Bridge govern() raised: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Governance error: {exc}") from exc
 
     result_dict = result.to_dict()
-    _persist_telemetry(r, request.context_id, result_dict)
+    _persist_telemetry(r, body.context_id, result_dict)
 
-    # dV/dt summary for the response
     v_hist = result.v_history
     dv_dt = None
     if len(v_hist) >= 2:
@@ -224,33 +236,32 @@ def govern(request: GovernRequest):
 
     return {
         **result_dict,
-        "context_id": request.context_id,
+        "context_id": body.context_id,
         "dv_dt_overall": dv_dt,
         "telemetry_stored": r is not None,
     }
 
 
 @app.post("/stage-report")
-def stage_report(request: StageReportRequest):
-    """
-    Quick SAP stage classification — no full governance loop.
-    Useful for dashboard / monitoring use without execution overhead.
-    """
+@limiter.limit("60/minute")
+def stage_report(request: Request, body: StageReportRequest, api_key: str = Depends(verify_api_key)):
+    """Quick SAP stage classification — no full governance loop."""
     bridge = _get_bridge()
     try:
-        report = bridge.get_stage_report(request.code)
+        report = bridge.get_stage_report(body.code)
     except Exception as exc:
         logger.error(f"stage_report error: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Stage report error: {exc}") from exc
 
     return {
-        "context_id": request.context_id,
+        "context_id": body.context_id,
         **report,
     }
 
 
 @app.get("/telemetry/{context_id}")
-def get_telemetry(context_id: str, limit: int = 50):
+@limiter.limit("60/minute")
+def get_telemetry(request: Request, context_id: str, limit: int = 50, api_key: str = Depends(verify_api_key)):
     """
     Retrieve stored Lyapunov V-series and stage history for a context ID.
 
