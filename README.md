@@ -77,7 +77,7 @@ The exact installation and packaging path should be verified against the current
 
 ## Test Suite and Evidence
 
-The repository includes unit and integration-style tests, including a file named `tests/test_nsdt_clinical_trial.py`. Despite that filename and its internal wording, this is a software test suite using programmed inputs and expected outputs. It is **not a clinical trial**, does not involve human participants, and provides no clinical or medical evidence.
+The repository includes unit and integration-style tests, including a file named `tests/test_nsdt_scenarios.py`. This is a software scenario test suite using synthetic/programmed inputs and expected outputs. It is not a clinical trial, does not involve human participants, and provides no clinical or medical evidence.
 
 Passing software tests demonstrates only the behavior covered by those tests. It does not establish that the system reliably detects vulnerabilities, prevents production failures, or generates safe repairs. Independent benchmarks and adversarial testing would be required to support such claims.
 
