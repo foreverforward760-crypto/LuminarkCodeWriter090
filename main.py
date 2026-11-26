@@ -87,7 +87,9 @@ def verify_api_key(x_codewriter_api_key: Optional[str] = Header(None)) -> str:
             status_code=503,
             detail="CODEWRITER_DEMO_KEY must be at least 32 characters when configured.",
         )
-    valid_keys = [key for key in (CODEWRITER_API_KEY, CODEWRITER_DEMO_KEY) if key]
+    valid_keys = [CODEWRITER_API_KEY]
+    if ENVIRONMENT != "production" and CODEWRITER_DEMO_KEY:
+        valid_keys.append(CODEWRITER_DEMO_KEY)
     if not x_codewriter_api_key or not any(
         secrets.compare_digest(x_codewriter_api_key, key) for key in valid_keys
     ):
@@ -165,8 +167,8 @@ async def lifespan(app: FastAPI):
     if ENVIRONMENT == "production":
         if not CODEWRITER_API_KEY or len(CODEWRITER_API_KEY) < 32:
             raise RuntimeError("Production requires CODEWRITER_API_KEY of at least 32 characters.")
-        if CODEWRITER_DEMO_KEY and len(CODEWRITER_DEMO_KEY) < 32:
-            raise RuntimeError("CODEWRITER_DEMO_KEY must be at least 32 characters.")
+        if CODEWRITER_DEMO_KEY:
+            raise RuntimeError("CODEWRITER_DEMO_KEY is disabled in production.")
         if EXEC_MODE != "docker":
             raise RuntimeError("Production requires Docker execution mode.")
         if not CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS):
