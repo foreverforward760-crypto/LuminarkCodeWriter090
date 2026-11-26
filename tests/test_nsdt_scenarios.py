@@ -86,7 +86,7 @@ def bridge():
 # ── 1. SAPGeometry Software Scenario Tests ───────────────────────────────────────────
 
 
-class TestSAPGeometryClinicalTrials:
+class TestSAPGeometryScenarios:
     def test_stage_0_centroid_classifies_to_stage_0(self):
         """Input vector: all zeros. Expected: Stage 0 (Plenara)."""
         stage = SAPGeometry.classify([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -155,7 +155,7 @@ class TestSAPGeometryClinicalTrials:
 # ── 2. SAPEnergy Software Scenario Tests ─────────────────────────────────────────────
 
 
-class TestSAPEnergyClinicalTrials:
+class TestSAPEnergyScenarios:
     def test_trap_energy_always_in_unit_interval(self):
         """Trap energy for every stage must be in [0, 1]."""
         test_vectors = [
@@ -208,7 +208,7 @@ class TestSAPEnergyClinicalTrials:
 # ── 3. Bayesian Posterior Software Scenario Tests ────────────────────────────────────
 
 
-class TestBayesianClinicalTrials:
+class TestBayesianScenarios:
     def test_posterior_sums_to_one(self, bayesian):
         """Posterior must sum to 1.0 ± 1e-5 for any NSDT input."""
         test_vectors = [
@@ -276,7 +276,7 @@ class TestBayesianClinicalTrials:
 # ── 4. Lyapunov Software Scenario Tests ───────────────────────────────────────────────
 
 
-class TestLyapunovClinicalTrials:
+class TestLyapunovScenarios:
     def test_V_non_negative(self, lyapunov):  # noqa: N802
         """Lyapunov V must be non-negative for any inputs."""
         cases = [(0, 0, 0), (2.1, 0.6, 1.2), (5.0, 1.0, 3.0), (0.01, 0.01, 0.01)]
@@ -328,7 +328,7 @@ class TestLyapunovClinicalTrials:
 # ── 5. Numerical Constitution Software Scenario Tests ────────────────────────────────
 
 
-class TestNumericalConstitutionClinicalTrials:
+class TestNumericalConstitutionScenarios:
     def test_low_V_passes(self, constitution):  # noqa: N802
         """V=0.5 (well below threshold=3.0) must PASS."""
         report = constitution.certify(entropy=0.3, energy=0.1, velocity=0.0)
@@ -354,10 +354,10 @@ class TestNumericalConstitutionClinicalTrials:
 # ── 6. SAP Psychiatrist Software Scenario Tests ──────────────────────────────────────
 
 
-class TestSAPPsychiatristClinicalTrials:
+class TestSAPPsychiatristScenarios:
     """
-    Clinical trials: known error types must map to expected SAP stages.
-    Each test is a "case study" — a specific error pattern and its correct stage classification.
+    Software scenarios: known error types are supplied to the heuristic
+    classifier and compared with programmed expected stage labels.
     """
 
     def test_import_error_maps_to_stage_0(self, psychiatrist):
@@ -436,7 +436,7 @@ class TestSAPPsychiatristClinicalTrials:
 # ── 7. LuminarkLiveBridge Software Scenario Tests ────────────────────────────────────
 
 
-class TestLuminarkLiveBridgeClinicalTrials:
+class TestLuminarkLiveBridgeScenarios:
     def test_simple_passing_code(self, bridge):
         """Clean code that passes all checks should return PASS verdict."""
         code = "result = 2 + 2\nprint(result)\nassert result == 4"
