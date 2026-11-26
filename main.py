@@ -28,6 +28,7 @@ Start:
 import json
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -55,10 +56,16 @@ logging.basicConfig(
 REDIS_URL            = os.getenv("REDIS_URL",                    "redis://redis:6379")
 DOCKER_IMAGE         = os.getenv("LUMINARK_DOCKER_IMAGE",        "luminark-sandbox:latest")
 MAX_ITERATIONS       = int(os.getenv("LUMINARK_MAX_ITERATIONS",  "3"))
-EXEC_MODE            = os.getenv("LUMINARK_MODE",                "docker")
+EXEC_MODE            = os.getenv("LUMINARK_MODE", "docker").lower()
+ENVIRONMENT          = os.getenv("ENVIRONMENT", "development").lower()
 STABILITY_THRESHOLD  = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
-CODEWRITER_API_KEY   = os.getenv("CODEWRITER_API_KEY",           "codewriter-key-change-me")
-CODEWRITER_DEMO_KEY  = os.getenv("CODEWRITER_DEMO_KEY",          "codewriter-demo-public")
+CODEWRITER_API_KEY   = os.getenv("CODEWRITER_API_KEY")
+CODEWRITER_DEMO_KEY  = os.getenv("CODEWRITER_DEMO_KEY")
+CORS_ORIGINS         = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
 
 # Redis key prefixes
 _KEY_V_SERIES    = "luminark:v_series:{ctx}"
@@ -70,7 +77,20 @@ _KEY_VERDICT_CTR = "luminark:verdicts:{verdict}"
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 def verify_api_key(x_codewriter_api_key: Optional[str] = Header(None)) -> str:
-    if x_codewriter_api_key not in (CODEWRITER_API_KEY, CODEWRITER_DEMO_KEY):
+    if not CODEWRITER_API_KEY or len(CODEWRITER_API_KEY) < 32:
+        raise HTTPException(
+            status_code=503,
+            detail="API authentication is not configured. Set CODEWRITER_API_KEY to a random secret of at least 32 characters.",
+        )
+    if CODEWRITER_DEMO_KEY and len(CODEWRITER_DEMO_KEY) < 32:
+        raise HTTPException(
+            status_code=503,
+            detail="CODEWRITER_DEMO_KEY must be at least 32 characters when configured.",
+        )
+    valid_keys = [key for key in (CODEWRITER_API_KEY, CODEWRITER_DEMO_KEY) if key]
+    if not x_codewriter_api_key or not any(
+        secrets.compare_digest(x_codewriter_api_key, key) for key in valid_keys
+    ):
         raise HTTPException(status_code=401, detail="Invalid or missing X-CODEWRITER-API-KEY")
     return x_codewriter_api_key
 
@@ -80,14 +100,36 @@ limiter = Limiter(key_func=get_remote_address)
 # ── Redis client ──────────────────────────────────────────────────────────────
 
 
-def _get_redis() -> redis.Redis:
-    """Return a Redis client. Raises RuntimeError if Redis is unavailable."""
+_redis_client: redis.Redis | None = None
+
+
+def _get_redis() -> redis.Redis | None:
+    """Return a shared Redis client, or None when telemetry storage is unavailable."""
+    global _redis_client
+    if _redis_client is not None:
+        try:
+            _redis_client.ping()
+            return _redis_client
+        except Exception:
+            try:
+                _redis_client.close()
+            except Exception:
+                pass
+            _redis_client = None
     try:
-        r = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=3)
-        r.ping()
-        return r
+        _redis_client = redis.from_url(
+            REDIS_URL, decode_responses=True, socket_connect_timeout=3
+        )
+        _redis_client.ping()
+        return _redis_client
     except Exception as exc:
-        logger.warning(f"Redis unavailable ({exc}) — telemetry will be skipped")
+        logger.warning("Redis unavailable (%s) — telemetry will be skipped", exc)
+        if _redis_client is not None:
+            try:
+                _redis_client.close()
+            except Exception:
+                pass
+        _redis_client = None
         return None
 
 
@@ -98,6 +140,10 @@ _bridge: LuminarkLiveBridge | None = None
 
 def _get_bridge() -> LuminarkLiveBridge:
     global _bridge
+    if EXEC_MODE not in {"docker", "local"}:
+        raise RuntimeError("LUMINARK_MODE must be 'docker' or 'local'.")
+    if EXEC_MODE == "local" and ENVIRONMENT != "development":
+        raise RuntimeError("LOCAL execution is permitted only in development.")
     if _bridge is None:
         mode = ExecutionMode.DOCKER if EXEC_MODE == "docker" else ExecutionMode.LOCAL
         _bridge = LuminarkLiveBridge(
@@ -116,10 +162,21 @@ def _get_bridge() -> LuminarkLiveBridge:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("LUMINARK Bridge starting up — warming bridge and Redis connection")
+    if ENVIRONMENT == "production":
+        if not CODEWRITER_API_KEY or len(CODEWRITER_API_KEY) < 32:
+            raise RuntimeError("Production requires CODEWRITER_API_KEY of at least 32 characters.")
+        if CODEWRITER_DEMO_KEY and len(CODEWRITER_DEMO_KEY) < 32:
+            raise RuntimeError("CODEWRITER_DEMO_KEY must be at least 32 characters.")
+        if EXEC_MODE != "docker":
+            raise RuntimeError("Production requires Docker execution mode.")
+        if not CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS):
+            raise RuntimeError("Production CORS_ORIGINS must contain explicit HTTPS origins.")
     _get_bridge()
     _get_redis()
     yield
     logger.info("LUMINARK Bridge shutting down")
+    if _redis_client is not None:
+        _redis_client.close()
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
@@ -127,12 +184,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LUMINARK Live Bridge",
     description=(
-        "SAP-governed code execution service. Runs code in an isolated sandbox, "
-        "evaluates Lyapunov stability, and iteratively repairs failures via the "
-        "SAPPsychiatrist. Stores full telemetry in Redis."
+        "Experimental code-execution and heuristic-scoring prototype. A PASS "
+        "means only that programmed thresholds were met; it does not certify "
+        "code correctness, security, or safe behavior. Repair suggestions are "
+        "heuristic and are not generated by an integrated language model."
     ),
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if ENVIRONMENT == "production" else "/openapi.json",
 )
 
 app.state.limiter = limiter
@@ -140,9 +201,10 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CORS_ORIGIN", "http://localhost:3000")],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-CODEWRITER-API-KEY"],
 )
 
 
@@ -150,15 +212,15 @@ app.add_middleware(
 
 
 class GovernRequest(BaseModel):
-    code: str = Field(..., description="Python source code to govern")
-    task_description: str = Field("", description="Human-readable task description")
-    context_id: str = Field("default", description="ID for telemetry grouping")
+    code: str = Field(..., min_length=1, max_length=100_000, description="Python source code to govern")
+    task_description: str = Field("", max_length=2_000, description="Human-readable task description")
+    context_id: str = Field("default", pattern=r"^[A-Za-z0-9_-]{1,64}$", description="ID for telemetry grouping")
     prev_stage: int | None = Field(None, ge=0, le=9)
 
 
 class StageReportRequest(BaseModel):
-    code: str = Field(..., description="Python source code to classify")
-    context_id: str = Field("default")
+    code: str = Field(..., min_length=1, max_length=100_000, description="Python source code to classify")
+    context_id: str = Field("default", pattern=r"^[A-Za-z0-9_-]{1,64}$")
 
 
 # ── Telemetry helper ──────────────────────────────────────────────────────────
@@ -224,7 +286,7 @@ def govern(request: Request, body: GovernRequest, api_key: str = Depends(verify_
         )
     except Exception as exc:
         logger.error(f"Bridge govern() raised: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Governance error: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Governance operation failed. See server logs.") from exc
 
     result_dict = result.to_dict()
     _persist_telemetry(r, body.context_id, result_dict)
@@ -308,7 +370,7 @@ def get_telemetry(request: Request, context_id: str, limit: int = 50, api_key: s
         }
     except Exception as exc:
         logger.error(f"Telemetry read failed: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Telemetry read error: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Telemetry read failed. See server logs.") from exc
 
 
 @app.get("/health")
