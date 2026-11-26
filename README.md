@@ -1,197 +1,105 @@
 # LUMINARK CodeWriter
-## Active Governance Layer — Stanfield's Axiom of Perpetuity
+## SAP-based code analysis and repair prototype
 
-**Meridian Axiom Alignment Technologies (MAAT)**
-
-> *"The system that cannot see its own failure mode is already in Stage 8."*
+**Conceptual framework and project direction:** Richard Stanfield, according to the project owner  
+**Software implementation:** AI-generated code, directed and reviewed by the project owner
 
 ---
 
-## What is LUMINARK?
+## What is LUMINARK CodeWriter?
 
-LUMINARK CodeWriter is an **Active Governance Layer** for AI-generated and human-written Python code. It applies the **Stanfield Axiom of Perpetuity (SAP)** — a 10-stage mathematical framework for modelling dynamic system evolution — to classify, monitor, and repair code failures before they reach production.
+LUMINARK CodeWriter is an experimental application intended to inspect Python code, classify selected execution or code-quality conditions using the owner's 0-9-0 / Stanfield's Axiom of Perpetuity framework, and generate repair guidance.
 
-Instead of asking *"did this code run?"*, LUMINARK asks:
+The implementation includes a CLI, FastAPI service, sandbox-related components, SAP stage classification, NSDT calculations, and an optional governance loop. Its current code and tests should be treated as a prototype—not as an independently validated code-security, reliability, or correctness product.
 
-> *"Where is this system on the SAP torus cycle, and is it moving toward stability or collapse?"*
+The project owner's account is that the underlying conceptual framework originated with him. AI systems generated the code and proposed technical mechanisms, including supporting constructs used to operationalize the framework.
 
-### The Three Guarantees
+---
 
-1. **Lyapunov Stability** — `V(H, E, v) = w_H·H + w_E·E + w_v·v²` governs every execution. Code that increases V is escalated. Code that decreases V is accepted.
-2. **Geometric Constraint** — SAP stage transitions are hard-enforced. Stage 5 is a point of no return. Stage 8 is a terminal branch. No skipping.
-3. **Surgical Repair** — Every failure is diagnosed by the SAP Psychiatrist, mapped to its exact SAP stage, and given a targeted repair instruction.
+## Intended Governance Flow
+
+The repository is designed around this general flow:
+
+1. Accept code and task context.
+2. Execute or inspect the supplied code through the selected execution mode.
+3. Extract or estimate a five-dimensional NSDT representation.
+4. Apply the repository's SAP stage-classification and scoring rules.
+5. Produce a verdict, diagnostic information, and possible repair guidance.
+6. Optionally repeat execution after a repair attempt.
+
+These steps describe the intended application workflow. They do not guarantee that all failures will be detected, that repairs will preserve program behavior, or that a PASS verdict means code is safe or correct.
 
 ---
 
 ## Architecture
 
-```
-luminark_gate.py              ← CLI entry point
-main.py                       ← FastAPI HTTP service + Redis telemetry
-│
-├── luminark/
-│   ├── sap_geometry_engine.py      ← 10-stage SAP classification
-│   ├── sap_constrained_bayesian.py ← Bayesian posterior + trap energy field
-│   ├── sap_lyapunov.py             ← Lyapunov V(H,E,v) + NumericalConstitution
-│   ├── sap_stage_classifier.py     ← SAP Psychiatrist + Surgical Prompts
-│   └── luminark_live_bridge.py     ← Governance orchestrator (The Bridge)
-│
-├── Dockerfile                ← Python 3.11-slim sandbox (The Crucible)
-├── entrypoint.sh             ← ulimit resource constraints
-├── docker-compose.yml        ← sandbox + redis services
-└── tests/
-    ├── test_nsdt_clinical_trial.py  ← 54-test clinical trial suite
-    └── test_live_bridge.py          ← Integration tests for the Bridge
-```
+The repository includes:
+- CLI entry points and a FastAPI service
+- SAP geometry, Bayesian-style scoring, energy, and stage-classification modules
+- A live-bridge orchestration layer
+- Docker-related sandbox configuration
+- Automated tests
+
+The repository contains both root-level modules and a `luminark/` package. Packaging, imports, sandbox isolation, and deployment behavior require verification before external use.
 
 ---
 
-## Governance Loop
+## Stage Reference
 
-```
-Code Input
-    │
-    ▼
-Execute in Sandbox (Docker — network-isolated, memory/CPU-limited)
-    │
-    ▼
-Extract NSDT Vector [Complexity, Stability, Tension, Adaptability, Coherence]
-    │
-    ▼
-SAPConstrainedBayesian.forward()  →  SAP Stage (0–9) + Posterior + Trap Energy
-    │
-    ▼
-NumericalConstitution.certify()   →  V = w_H·H + w_E·E + w_v·v²
-    │
-    ├── V < threshold  →  ✅ PASS
-    │
-    └── V ≥ threshold  →  SAPPsychiatrist.diagnose()
-                              │
-                              ▼
-                         Surgical Prompt  →  Repair  →  Re-execute
-                         (up to max_iterations)
-                              │
-                              └── Still failing  →  FAIL_EXHAUSTED
-```
+| Stage | Canonical Name |
+|-------|---------------|
+| 0 | PLENARA |
+| 1 | SPARK OF NAVIGATION |
+| 2 | FORGE OF POLARITY |
+| 3 | ENGINE OF EXPRESSION |
+| 4 | CRUCIBLE OF EQUILIBRIUM |
+| 5 | DYNAMO OF WILL |
+| 6 | NEXUS OF HARMONY |
+| 7 | LENS OF DISTILLATION |
+| 8 | VESSEL OF GROUNDING |
+| 9 | TRANSPARENCY OF THE GUIDE |
+
+The stage mapping and associated constraints are implementation rules derived from the project's framework. Their presence in code does not demonstrate that they are established measures of software quality or stability.
 
 ---
 
-## SAP Stage Reference
+## Installation and Development
 
-| Stage | Canonical Name | Geometry | Logistics Analogy |
-|-------|----------------|----------|-------------------|
-| 0 | PLENARA | Sphere | Void / Missing dependency |
-| 1 | SPARK OF NAVIGATION | Point | Unbound name |
-| 2 | FORGE OF POLARITY | Line | Type mismatch |
-| 3 | ENGINE OF EXPRESSION | Triangle | Logic error |
-| 4 | CRUCIBLE OF EQUILIBRIUM | Square | Boundary violation |
-| 5 | DYNAMO OF WILL | Pentagon | **Threshold — point of no return** |
-| 6 | NEXUS OF HARMONY | Hexagon | I/O failure |
-| 7 | LENS OF DISTILLATION | Heptagon | Runtime / concurrency |
-| 8 | VESSEL OF GROUNDING | Octagon | **Illusion of Permanence — Crystallization Paradox** |
-| 9 | TRANSPARENCY OF THE GUIDE | Nonagon | Critical resource exhaustion |
-
----
-
-## Quick Start
-
-### Install
+The repository currently documents a Python 3.11+ development setup. Follow the dependency and environment instructions in the project files, then run the test suite:
 
 ```bash
-git clone https://github.com/foreverforward760-crypto/LuminarkCodeWriter.git
-cd LuminarkCodeWriter
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-### Build the sandbox
-
-```bash
-make build
-```
-
-### Run governance on a file
-
-```bash
-# LOCAL mode (no Docker needed)
-python luminark_gate.py govern path/to/code.py
-
-# DOCKER mode (production — resource-constrained sandbox)
-python luminark_gate.py govern path/to/code.py --mode docker
-```
-
-### Run as HTTP service
-
-```bash
-docker-compose up --build
-# POST http://localhost:8080/govern
-```
-
-### Run tests
-
-```bash
-make test
-# or
 pytest tests/ -v
 ```
 
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/govern` | Full governance loop — returns verdict + audit trail |
-| `POST` | `/stage-report` | Quick SAP stage check (no repair) |
-| `GET`  | `/telemetry/{id}` | V-series + stage history from Redis |
-| `GET`  | `/health` | Liveness check |
-
-### POST `/govern`
-
-```json
-{
-  "code": "def add(a, b):\n    return a + b\nprint(add(1, 2))",
-  "context_id": "my-session-001",
-  "task_description": "simple addition function"
-}
-```
-
-**Response:**
-
-```json
-{
-  "verdict": "PASS",
-  "iterations": 1,
-  "sap_stage": 4,
-  "stage_name": "The Crucible",
-  "V": 1.23,
-  "passed": true,
-  "audit_trail": [...]
-}
-```
+The exact installation and packaging path should be verified against the current dependency configuration before distribution.
 
 ---
 
-## Environment Variables
+## Test Suite and Evidence
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LUMINARK_MODE` | `docker` | `docker` or `local` |
-| `LUMINARK_MAX_ITERATIONS` | `3` | Max repair attempts |
-| `LUMINARK_STABILITY_THRESHOLD` | `3.0` | Lyapunov V pass threshold |
-| `LUMINARK_DOCKER_IMAGE` | `luminark-sandbox:latest` | Sandbox image |
-| `REDIS_URL` | `redis://redis:6379` | Redis connection string |
+The repository includes unit and integration-style tests, including a file named `tests/test_nsdt_clinical_trial.py`. Despite that filename and its internal wording, this is a software test suite using programmed inputs and expected outputs. It is **not a clinical trial**, does not involve human participants, and provides no clinical or medical evidence.
+
+Passing software tests demonstrates only the behavior covered by those tests. It does not establish that the system reliably detects vulnerabilities, prevents production failures, or generates safe repairs. Independent benchmarks and adversarial testing would be required to support such claims.
 
 ---
 
-## License
+## Commercial and Technical Status
 
-**Proprietary & Confidential**
-© 2026 Meridian Axiom Alignment Technologies LLC. All rights reserved.
+This repository is a prototype requiring further engineering review. Before any production deployment or commercial transfer, the following should be verified:
+- Package installation and dependency resolution
+- Correctness and completeness of the execution sandbox
+- Network, filesystem, process, and resource isolation
+- API authentication and authorization
+- Whether generated repairs preserve intended behavior
+- Test coverage, false-positive/false-negative rates, and benchmark performance
+- Third-party dependency licenses and AI-service terms
 
-SAP (Stanfield's Axiom of Perpetuity) is proprietary intellectual property of
-Richard Stanfield / MAAT. Unauthorized use prohibited.
+No independent accuracy, security, or production-readiness claim is made in this README.
 
 ---
 
-*Built with SAP. Governed by Mathematics. Stability is not optional.*
+## Attribution and Rights Review
+
+The project owner states that the underlying 0-9-0 framework and the idea for this application originated with him, while AI systems generated the software code and suggested implementation mechanisms. This statement records the project owner's account and is not a legal determination of copyright ownership, inventorship, or exclusive rights. Third-party components, licenses, AI service terms, and contribution history should be reviewed before licensing or sale.
+
+*Project contact: LuminarkMeridian@gmail.com*
