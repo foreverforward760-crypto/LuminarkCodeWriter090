@@ -1,82 +1,48 @@
-# Security Policy
+# Security Policy — LUMINARK CodeWriter Prototype
 
-## Supported Versions
+## Support status
 
-| Version | Supported |
-|---------|-----------|
-| 1.x     | ✅ Active  |
+This repository is an experimental prototype. Security reports are reviewed on a best-effort basis; no acknowledgment, remediation, or disclosure timeline is guaranteed.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-**Do not open a public GitHub issue for security vulnerabilities.**
-
-Please report security vulnerabilities by emailing:
+Do not publish exploitable vulnerabilities in a public issue. Report them privately to:
 
 **LuminarkMeridian@gmail.com**
 
-Subject line: `[SECURITY] LuminarkCodeWriter — <brief description>`
+Include the affected commit, reproduction steps, impact, and any suggested mitigation.
 
-Include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact assessment
-- Any suggested mitigations
+## API authentication
 
-You will receive an acknowledgement within **48 hours** and a resolution
-timeline within **7 days**.
+The API has no built-in credentials. Authenticated endpoints return HTTP 503 until `CODEWRITER_API_KEY` is configured with a random secret of at least 32 characters. An optional `CODEWRITER_DEMO_KEY` is development-only and is rejected in production. Do not commit credentials.
 
----
+Production mode (`ENVIRONMENT=production`) requires Docker execution mode, a strong API key, and explicit HTTPS CORS origins. Local execution mode is permitted only in development.
 
-## Sandbox Security Model
+## Sandbox behavior
 
-The LUMINARK governance sandbox (Docker container) is designed with
-defence-in-depth:
+Docker execution applies the following controls to each submitted code task:
 
-### Container-level controls
-- **Network isolation:** `--network none` — no inbound or outbound traffic
-- **Memory limit:** `--memory 256m` — prevents memory exhaustion attacks
-- **CPU limit:** `--cpus 0.5` — prevents CPU monopolisation
-- **PID limit:** `--pids-limit 64` — prevents fork bombs
-- **Read-only filesystem:** `--read-only` with tmpfs for `/tmp`
-- **No new privileges:** `--security-opt no-new-privileges:true`
-- **Non-root user:** all code runs as `luminark` (UID 1001)
+- Network disabled (`--network none`)
+- Memory and CPU limits
+- PID limit
+- Read-only container root filesystem
+- Non-root UID/GID 1001
+- All Linux capabilities dropped
+- `no-new-privileges`
+- Read-only bind mount for the submitted source file
+- Temporary `/tmp` filesystem with no-exec and no-suid options
+- Process limits applied by `entrypoint.sh`
 
-### Process-level controls (entrypoint.sh ulimits)
-- CPU time: 25 seconds hard limit (SIGKILL on breach)
-- Virtual memory: 256 MB
-- Open files: 64 descriptors
-- Child processes: 32
-- Core dump size: 0 (no crash dumps in sandbox)
+If the Docker executable is missing, Docker mode now fails closed. It does not automatically execute submitted code on the host.
 
-### What the sandbox cannot do
-- Access the network
-- Write outside `/tmp` and `/workspace`
-- Escalate privileges
-- Persist state across executions
-- Access host filesystem (read-only bind mount for task file only)
+These controls reduce risk but do not prove complete isolation. Do not treat the sandbox as a security boundary for a multi-tenant public service without independent container-escape testing and an appropriate isolation runtime.
 
----
+## Known limitations
 
-## Known Limitations
+1. **LOCAL mode executes submitted Python directly on the host.** It is for trusted development tests only and must never be used for untrusted code or production requests.
+2. The bridge service in the supplied Compose configuration mounts the host Docker socket. Access to that socket is effectively root-equivalent on the host. The development Compose ports are bound to localhost, but this does not make Docker-socket access safe for an internet-facing deployment.
+3. The heuristic Lyapunov/NSDT checks do not certify code correctness, security, or safe behavior. A `PASS` is only a pass against configured model thresholds.
+4. Repair logic is heuristic and does not call an integrated language model. It may add comments without changing faulty program behavior.
+5. The sandbox does not establish protection against all kernel/container escape vulnerabilities or side-channel attacks.
 
-1. **LOCAL execution mode** (for development) does **not** apply container
-   or ulimit constraints. Never use LOCAL mode in production.
-
-2. The sandbox does not currently scan for GPU resource exhaustion. If
-   GPU-accelerated code is submitted, use `--gpus none` in Docker flags.
-
-3. The `_apply_surgical_repair()` heuristics in LOCAL mode add a comment
-   to the repaired code. In DOCKER mode, the repaired code runs in a fresh
-   container with no state from the previous run.
-
----
-
-## Responsible Disclosure Timeline
-
-- **T+0:** Vulnerability reported
-- **T+48h:** Acknowledgement sent
-- **T+7d:** Resolution timeline communicated
-- **T+30d:** Fix released (or compensating control documented)
-- **T+90d:** Public disclosure (coordinated with reporter)
-
-© 2026 Meridian Axiom Alignment Technologies LLC
+© 2026 Richard L. Stanfield / Meridian Axiom Alignment Technologies
