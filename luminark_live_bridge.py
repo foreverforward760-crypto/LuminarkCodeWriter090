@@ -16,8 +16,10 @@ Execution modes:
   DOCKER  — runs code in an isolated Python 3.11-slim container with ulimits
   LOCAL   — runs code in a subprocess (for development/testing only)
 
-The Docker mode is the "Crucible": resource-constrained, network-isolated,
-and ephemeral. No code that hasn't passed the Numerical Constitution leaves it.
+Docker mode applies container resource and network restrictions, but these controls
+are not a guarantee of complete isolation or code correctness. LOCAL mode executes
+untrusted code directly on the host and must never be used for untrusted submissions.
+If Docker is unavailable, execution fails closed; there is no automatic LOCAL fallback.
 """
 
 import contextlib
@@ -205,15 +207,16 @@ def _extract_nsdt_from_execution(result: ExecutionResult, code: str) -> list[flo
 
 class LuminarkLiveBridge:
     """
-    The LUMINARK Active Governance Orchestrator.
+    Experimental code-execution and heuristic-scoring orchestrator.
 
-    Executes code in a sandboxed environment, evaluates stability via the
-    Numerical Constitution, and iteratively repairs failures using the
-    SAPPsychiatrist's Surgical Prompts.
+    Executes code in Docker when configured, derives heuristic scores from
+    execution metadata, and may apply simple text-based repair suggestions.
+    A PASS verdict means only that the configured heuristic thresholds passed;
+    it does not certify correctness, security, or safe behavior.
 
     Parameters
     ----------
-    execution_mode   : ExecutionMode — DOCKER (production) or LOCAL (dev)
+    execution_mode   : ExecutionMode — DOCKER (container-restricted) or LOCAL (trusted local development only)
     max_iterations   : int — maximum repair attempts before FAIL_EXHAUSTED
     docker_image     : str — Docker image name for sandbox
     sandbox_timeout  : int — execution timeout in seconds
@@ -406,10 +409,27 @@ class LuminarkLiveBridge:
                 "none",
                 "--memory",
                 "256m",
+                "--memory-swap",
+                "256m",
                 "--cpus",
                 "0.5",
                 "--pids-limit",
                 "64",
+                "--read-only",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges:true",
+                "--user",
+                "1001:1001",
+                "--ulimit",
+                "nproc=32:32",
+                "--ulimit",
+                "nofile=64:64",
+                "--ulimit",
+                "core=0:0",
+                "--tmpfs",
+                "/tmp:rw,noexec,nosuid,size=32m,mode=1777",
                 "-v",
                 f"{tmp_path}:/workspace/task.py:ro",
                 self.docker_image,
@@ -438,9 +458,15 @@ class LuminarkLiveBridge:
                 timed_out=True,
             )
         except FileNotFoundError:
-            # Docker not available — warn and fall back to local
-            logger.warning("Docker not found — falling back to LOCAL execution mode")
-            return self._execute_local(code)
+            # Fail closed. Never execute submitted code unsandboxed when Docker
+            # was explicitly selected.
+            logger.error("Docker executable not found; refusing unsandboxed execution")
+            return ExecutionResult(
+                stdout="",
+                stderr="Docker is unavailable. Refusing to execute submitted code outside the sandbox.",
+                exit_code=127,
+                elapsed_s=time.time() - t0,
+            )
         finally:
             with contextlib.suppress(OSError):
                 os.unlink(tmp_path)
