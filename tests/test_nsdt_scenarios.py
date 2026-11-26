@@ -3,7 +3,7 @@ tests/test_nsdt_scenarios.py – LUMINARK Software Scenario Test Suite
 LUMINARK Active Governance Layer
 
 Software tests using synthetic NSDT vectors and programmed expected outputs.
-They do not involve human participants, clinical data, medical stage classifications,
+They do not involve human participants, clinical data, medical diagnoses,
 clinical outcomes, or evidence of therapeutic efficacy. The tests verify
 only the behavior of the specific code paths and rules exercised below.
 
@@ -429,8 +429,8 @@ class TestSAPPsychiatristClinicalTrials:
             {"error_class": "TypeError", "error_message": "int + str", "function": "f2"},
             {"error_class": "MemoryError", "error_message": "", "function": "f3"},
         ]
-        stage classifications = psychiatrist.batch_diagnose(failures)
-        assert len(stage classifications) == 3
+        diagnoses = psychiatrist.batch_diagnose(failures)
+        assert len(diagnoses) == 3
 
 
 # ── 7. LuminarkLiveBridge Software Scenario Tests ────────────────────────────────────
