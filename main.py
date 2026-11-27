@@ -124,10 +124,8 @@ def _get_redis() -> redis.Redis | None:
     except Exception as exc:
         logger.warning("Redis unavailable (%s) — telemetry will be skipped", exc)
         if _redis_client is not None:
-            try:
+            with suppress(Exception):
                 _redis_client.close()
-            except Exception:
-                pass
         _redis_client = None
         return None
 
