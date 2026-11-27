@@ -28,7 +28,6 @@ Start:
 import json
 import logging
 import os
-import re
 import secrets
 from contextlib import asynccontextmanager, suppress
 
@@ -240,12 +239,16 @@ def _persist_telemetry(r: redis.Redis | None, context_id: str, result_dict: dict
         ctx = context_id
 
         # V-series: one entry per governance iteration
+        v_key = _KEY_V_SERIES.format(ctx=ctx)
+        stage_key = _KEY_STAGE_SEQ.format(ctx=ctx)
         for v in result_dict.get("v_history", []):
-            r.rpush(_KEY_V_SERIES.format(ctx=ctx), v)
+            r.rpush(v_key, v)
+        r.expire(v_key, TELEMETRY_TTL_SECONDS)
 
         # Stage sequence
         for s in result_dict.get("stage_history", []):
-            r.rpush(_KEY_STAGE_SEQ.format(ctx=ctx), s)
+            r.rpush(stage_key, s)
+        r.expire(stage_key, TELEMETRY_TTL_SECONDS)
 
         # Persist metadata only; never store submitted or generated source code.
         report = result_dict.get("final_report") or {}
