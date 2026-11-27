@@ -29,6 +29,8 @@ import json
 import logging
 import os
 import secrets
+import shutil
+import subprocess
 from contextlib import asynccontextmanager, suppress
 
 import redis
@@ -136,6 +138,35 @@ def _get_redis() -> redis.Redis | None:
 _bridge: LuminarkLiveBridge | None = None
 
 
+def _verify_docker_runtime(require_image: bool = True) -> bool:
+    """Check that the Docker CLI, daemon, and configured sandbox image are usable."""
+    if not shutil.which("docker"):
+        return False
+    try:
+        info = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if info.returncode != 0:
+            return False
+        if require_image:
+            image = subprocess.run(
+                ["docker", "image", "inspect", DOCKER_IMAGE],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            if image.returncode != 0:
+                return False
+        return True
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
 def _get_bridge() -> LuminarkLiveBridge:
     global _bridge
     if EXEC_MODE not in {"docker", "local"}:
@@ -167,6 +198,8 @@ async def lifespan(app: FastAPI):
             raise RuntimeError("CODEWRITER_DEMO_KEY is disabled in production.")
         if EXEC_MODE != "docker":
             raise RuntimeError("Production requires Docker execution mode.")
+        if not _verify_docker_runtime(require_image=True):
+            raise RuntimeError("Production requires a reachable Docker daemon and the configured sandbox image.")
         if not CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS):
             raise RuntimeError("Production CORS_ORIGINS must contain explicit HTTPS origins.")
     _get_bridge()
@@ -402,8 +435,12 @@ def health():
     """Liveness check — confirms bridge and Redis status."""
     r = _get_redis()
     _get_bridge()
+    docker_status = (
+        "available" if _verify_docker_runtime(require_image=True)
+        else "unavailable"
+    ) if EXEC_MODE == "docker" else "local-development-only"
     return {
-        "status": "ok",
+        "status": "ok" if docker_status == "available" or EXEC_MODE == "local" else "degraded",
         "service": "LUMINARK Live Bridge",
         "version": "1.0.0",
         "exec_mode": EXEC_MODE,
@@ -411,4 +448,5 @@ def health():
         "stability_threshold": STABILITY_THRESHOLD,
         "redis": "connected" if r is not None else "unavailable",
         "bridge": "ready",
+        "docker_runtime": docker_status,
     }
