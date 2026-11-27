@@ -12,7 +12,7 @@ LUMINARK CodeWriter is an experimental application intended to inspect Python co
 
 The implementation includes a CLI, FastAPI service, sandbox-related components, SAP stage classification, NSDT calculations, and an optional governance loop. Its current code and tests should be treated as a prototype—not as an independently validated code-security, reliability, or correctness product.
 
-The project owner's account is that the underlying conceptual framework originated with him. AI systems generated the code and proposed technical mechanisms, including supporting constructs used to operationalize the framework.
+The project owner states that the underlying 0-9-0 framework, CodeWriter concept, and ideas for this application originated with him. AI systems generated the software code and suggested technical mechanisms. NSDT and the Container Rule were introduced by AI as supporting implementation mechanisms within the owner's framework, not as independent conceptual origins. This records the owner's account and is not a legal determination of copyright ownership, inventorship, or exclusive rights.
 
 ---
 
@@ -40,7 +40,18 @@ The repository includes:
 - Docker-related sandbox configuration
 - Automated tests
 
-The repository contains both root-level modules and a `luminark/` package. Packaging, imports, sandbox isolation, and deployment behavior require verification before external use.
+The repository contains both root-level modules and a `luminark/` package. The packaging and import structure still requires a complete installation test before distribution.
+
+### Execution and security boundaries
+
+- Docker mode applies network, memory, CPU, PID, filesystem, capability, and user restrictions to submitted code. These controls reduce risk but do not prove complete isolation.
+- If Docker is unavailable, Docker mode now fails closed. It no longer falls back to running submitted code directly on the host.
+- LOCAL mode executes code directly on the host and is only for trusted development tests.
+- The API has no built-in credentials. Authenticated routes require a configured `CODEWRITER_API_KEY` of at least 32 characters. A demo key is development-only and rejected in production.
+- Production configuration requires Docker mode and explicit HTTPS CORS origins.
+- The bridge container in Docker Compose mounts the host Docker socket, which grants root-equivalent access to the host. The supplied Compose ports are bound to localhost for development. This architecture is not appropriate for an internet-facing multi-tenant service without a separate sandbox host or isolation runtime.
+- A `PASS` verdict means only that the project's heuristic thresholds were met. It does not certify code correctness, security, or safe behavior.
+- Repair logic is heuristic. It does not call an integrated language model and may add comments without fixing the underlying defect.
 
 ---
 
@@ -100,6 +111,6 @@ No independent accuracy, security, or production-readiness claim is made in this
 
 ## Attribution and Rights Review
 
-The project owner states that the underlying 0-9-0 framework and the idea for this application originated with him, while AI systems generated the software code and suggested implementation mechanisms. This statement records the project owner's account and is not a legal determination of copyright ownership, inventorship, or exclusive rights. Third-party components, licenses, AI service terms, and contribution history should be reviewed before licensing or sale.
+The repository has no root `LICENSE` file. The package metadata labels the project proprietary, but no license text is supplied. Do not assume a third-party reuse or redistribution license. Third-party components, AI-service terms, and code provenance require review before licensing or sale.
 
 *Project contact: LuminarkMeridian@gmail.com*
