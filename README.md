@@ -48,7 +48,7 @@ The repository contains both root-level modules and a `luminark/` package. The p
 - If Docker is unavailable, Docker mode now fails closed. It no longer falls back to running submitted code directly on the host.
 - LOCAL mode executes code directly on the host and is only for trusted development tests.
 - The API has no built-in credentials. Authenticated routes require a configured `CODEWRITER_API_KEY` of at least 32 characters. A demo key is development-only and rejected in production.
-- Production configuration requires Docker mode and explicit HTTPS CORS origins.
+- Production configuration requires Docker mode, a reachable Docker daemon, the configured sandbox image, and explicit HTTPS CORS origins; startup checks these dependencies.
 - The bridge container in Docker Compose mounts the host Docker socket, which grants root-equivalent access to the host. The supplied Compose ports are bound to localhost for development. This architecture is not appropriate for an internet-facing multi-tenant service without a separate sandbox host or isolation runtime.
 - A `PASS` verdict means only that the project's heuristic thresholds were met. It does not certify code correctness, security, or safe behavior.
 - Repair logic is heuristic. It does not call an integrated language model and may add comments without fixing the underlying defect.
