@@ -65,7 +65,7 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 STABILITY_THRESHOLD = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
 CODEWRITER_API_KEY = os.getenv("CODEWRITER_API_KEY")
 CODEWRITER_DEMO_KEY = os.getenv("CODEWRITER_DEMO_KEY")
-CORS_ORIGINS         = [
+CORS_ORIGINS = [
     origin.strip()
     for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
     if origin.strip()
