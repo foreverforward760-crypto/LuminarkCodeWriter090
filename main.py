@@ -28,11 +28,12 @@ Start:
 import json
 import logging
 import os
+import re
 import secrets
 from contextlib import asynccontextmanager, suppress
 
 import redis
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -55,6 +56,7 @@ logging.basicConfig(
 REDIS_URL            = os.getenv("REDIS_URL",                    "redis://redis:6379")
 DOCKER_IMAGE         = os.getenv("LUMINARK_DOCKER_IMAGE",        "luminark-sandbox:latest")
 MAX_ITERATIONS       = int(os.getenv("LUMINARK_MAX_ITERATIONS",  "3"))
+TELEMETRY_TTL_SECONDS = max(60, min(int(os.getenv("LUMINARK_TELEMETRY_TTL_SECONDS", "604800")), 2_592_000))
 EXEC_MODE            = os.getenv("LUMINARK_MODE", "docker").lower()
 ENVIRONMENT          = os.getenv("ENVIRONMENT", "development").lower()
 STABILITY_THRESHOLD  = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
@@ -225,14 +227,11 @@ class StageReportRequest(BaseModel):
 
 def _persist_telemetry(r: redis.Redis | None, context_id: str, result_dict: dict):
     """
-    Write governance result to Redis.
+    Write non-sensitive governance metadata to Redis.
 
-    Storage layout:
-      luminark:v_series:{ctx}    — RPUSH each V value (for dV/dt plotting)
-      luminark:stage_seq:{ctx}   — RPUSH each stage value
-      luminark:audit:{ctx}       — RPUSH full JSON result per run
-      luminark:latest:{ctx}      — SET latest result (overwrite)
-      luminark:verdicts:{verdict} — INCR global counter
+    Submitted source and final code, stdout/stderr, and detailed diagnostic
+    messages are deliberately excluded from persistent telemetry.
+    Per-context keys expire after the configured retention period.
     """
     if r is None:
         return
@@ -248,12 +247,32 @@ def _persist_telemetry(r: redis.Redis | None, context_id: str, result_dict: dict
         for s in result_dict.get("stage_history", []):
             r.rpush(_KEY_STAGE_SEQ.format(ctx=ctx), s)
 
-        # Full audit — store last 100 runs per context
-        r.rpush(_KEY_AUDIT.format(ctx=ctx), json.dumps(result_dict))
-        r.ltrim(_KEY_AUDIT.format(ctx=ctx), -100, -1)
+        # Persist metadata only; never store submitted or generated source code.
+        report = result_dict.get("final_report") or {}
+        audit_record = {
+            "verdict": result_dict.get("verdict"),
+            "iterations": result_dict.get("iterations"),
+            "total_elapsed_s": result_dict.get("total_elapsed_s"),
+            "v_history": result_dict.get("v_history", []),
+            "stage_history": result_dict.get("stage_history", []),
+            "diagnosis_count": len(result_dict.get("diagnoses", [])),
+            "final_report": {
+                "passed": report.get("passed"),
+                "V": report.get("V"),
+                "action": report.get("action"),
+                "entropy": report.get("entropy"),
+                "energy": report.get("energy"),
+                "velocity": report.get("velocity"),
+            },
+        }
+        audit_key = _KEY_AUDIT.format(ctx=ctx)
+        latest_key = _KEY_LATEST.format(ctx=ctx)
+        r.rpush(audit_key, json.dumps(audit_record))
+        r.ltrim(audit_key, -100, -1)
+        r.expire(audit_key, TELEMETRY_TTL_SECONDS)
 
-        # Latest result (quick dashboard lookup)
-        r.set(_KEY_LATEST.format(ctx=ctx), json.dumps(result_dict))
+        # Latest metadata only (quick dashboard lookup)
+        r.set(latest_key, json.dumps(audit_record), ex=TELEMETRY_TTL_SECONDS)
 
         # Global verdict counters
         r.incr(_KEY_VERDICT_CTR.format(verdict=result_dict.get("verdict", "UNKNOWN")))
@@ -310,7 +329,7 @@ def stage_report(request: Request, body: StageReportRequest, api_key: str = Depe
         report = bridge.get_stage_report(body.code)
     except Exception as exc:
         logger.error(f"stage_report error: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Stage report error: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Stage report failed. See server logs.") from exc
 
     return {
         "context_id": body.context_id,
@@ -320,7 +339,12 @@ def stage_report(request: Request, body: StageReportRequest, api_key: str = Depe
 
 @app.get("/telemetry/{context_id}")
 @limiter.limit("60/minute")
-def get_telemetry(request: Request, context_id: str, limit: int = 50, api_key: str = Depends(verify_api_key)):
+def get_telemetry(
+    request: Request,
+    context_id: str = Path(..., pattern=r"^[A-Za-z0-9_-]{1,64}$"),
+    limit: int = Query(50, ge=1, le=100),
+    api_key: str = Depends(verify_api_key),
+):
     """
     Retrieve stored Lyapunov V-series and stage history for a context ID.
 
