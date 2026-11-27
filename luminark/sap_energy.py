@@ -35,10 +35,10 @@ from luminark.sap_energy_layer import (
 
 # Legacy aliases — preserved for any CodeWriter internal code that used
 # the old sap_energy.py names from the HybridEngine session
-SAPEnergyResult    = EvaluationResult   # unified result type
-Stage8Chamber      = None               # deprecated — use chamber_active field
-Stage5Bifurcation  = None               # deprecated — use path field
-Stage9Action       = None               # deprecated — use evaluate_trap(stage=9)
+SAPEnergyResult = EvaluationResult  # unified result type
+Stage8Chamber = None  # deprecated — use chamber_active field
+Stage5Bifurcation = None  # deprecated — use path field
+Stage9Action = None  # deprecated — use evaluate_trap(stage=9)
 
 __all__ = [
     "SAPStage",
