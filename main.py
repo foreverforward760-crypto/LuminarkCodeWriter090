@@ -5,7 +5,7 @@ HTTP API layer wrapping the LuminarkLiveBridge governance orchestrator.
 Adds Redis telemetry for:
   - Lyapunov V-series storage (dV/dt monitoring)
   - Stage history per context
-  - Full audit trail persistence
+  - Metadata-only audit trail persistence (source code and diagnostics excluded)
   - Latest governance verdict per context
 
 Endpoints:
