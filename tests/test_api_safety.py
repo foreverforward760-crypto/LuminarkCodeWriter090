@@ -96,3 +96,49 @@ def test_govern_request_limits_code_size_and_context_id():
         api.GovernRequest(code="x", context_id="invalid:context")
     with pytest.raises(ValidationError):
         api.GovernRequest(code="x" * 100_001)
+
+
+def test_telemetry_persists_metadata_not_submitted_or_generated_code():
+    class FakeRedis:
+        def __init__(self):
+            self.values = {}
+            self.ttls = {}
+
+        def rpush(self, key, value):
+            self.values.setdefault(key, []).append(value)
+
+        def ltrim(self, key, start, end):
+            self.values[key] = self.values.get(key, [])[start : end + 1]
+
+        def expire(self, key, seconds):
+            self.ttls[key] = seconds
+
+        def set(self, key, value, ex=None):
+            self.values[key] = value
+            self.ttls[key] = ex
+
+        def incr(self, key):
+            self.values[key] = int(self.values.get(key, 0)) + 1
+
+    fake = FakeRedis()
+    api._persist_telemetry(
+        fake,
+        "safe_context",
+        {
+            "verdict": "PASS",
+            "iterations": 1,
+            "total_elapsed_s": 0.1,
+            "v_history": [1.0],
+            "stage_history": [4],
+            "final_code": "SECRET_SOURCE_CODE_SHOULD_NOT_BE_STORED",
+            "audit_trail": [{"code": "PRIVATE_CODE"}],
+            "diagnoses": [{"error_message": "private diagnostic text"}],
+            "final_report": {"passed": True, "V": 1.0, "action": "hold"},
+        },
+    )
+    stored = str(fake.values)
+    assert "SECRET_SOURCE_CODE_SHOULD_NOT_BE_STORED" not in stored
+    assert "PRIVATE_CODE" not in stored
+    assert "private diagnostic text" not in stored
+    assert fake.ttls["luminark:audit:safe_context"] == api.TELEMETRY_TTL_SECONDS
+    assert fake.ttls["luminark:latest:safe_context"] == api.TELEMETRY_TTL_SECONDS
