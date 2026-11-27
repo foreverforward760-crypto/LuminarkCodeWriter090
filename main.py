@@ -29,11 +29,10 @@ import json
 import logging
 import os
 import secrets
-from contextlib import asynccontextmanager
-from typing import Optional
+from contextlib import asynccontextmanager, suppress
 
 import redis
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -76,7 +75,7 @@ _KEY_VERDICT_CTR = "luminark:verdicts:{verdict}"
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
-def verify_api_key(x_codewriter_api_key: Optional[str] = Header(None)) -> str:
+def verify_api_key(x_codewriter_api_key: str | None = Header(None)) -> str:
     if not CODEWRITER_API_KEY or len(CODEWRITER_API_KEY) < 32:
         raise HTTPException(
             status_code=503,
@@ -113,10 +112,8 @@ def _get_redis() -> redis.Redis | None:
             _redis_client.ping()
             return _redis_client
         except Exception:
-            try:
+            with suppress(Exception):
                 _redis_client.close()
-            except Exception:
-                pass
             _redis_client = None
     try:
         _redis_client = redis.from_url(
