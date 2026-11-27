@@ -54,15 +54,17 @@ logging.basicConfig(
 
 # ── Configuration from environment ────────────────────────────────────────────
 
-REDIS_URL            = os.getenv("REDIS_URL",                    "redis://redis:6379")
-DOCKER_IMAGE         = os.getenv("LUMINARK_DOCKER_IMAGE",        "luminark-sandbox:latest")
-MAX_ITERATIONS       = int(os.getenv("LUMINARK_MAX_ITERATIONS",  "3"))
-TELEMETRY_TTL_SECONDS = max(60, min(int(os.getenv("LUMINARK_TELEMETRY_TTL_SECONDS", "604800")), 2_592_000))
-EXEC_MODE            = os.getenv("LUMINARK_MODE", "docker").lower()
-ENVIRONMENT          = os.getenv("ENVIRONMENT", "development").lower()
-STABILITY_THRESHOLD  = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
-CODEWRITER_API_KEY   = os.getenv("CODEWRITER_API_KEY")
-CODEWRITER_DEMO_KEY  = os.getenv("CODEWRITER_DEMO_KEY")
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+DOCKER_IMAGE = os.getenv("LUMINARK_DOCKER_IMAGE", "luminark-sandbox:latest")
+MAX_ITERATIONS = int(os.getenv("LUMINARK_MAX_ITERATIONS", "3"))
+TELEMETRY_TTL_SECONDS = max(
+    60, min(int(os.getenv("LUMINARK_TELEMETRY_TTL_SECONDS", "604800")), 2_592_000)
+)
+EXEC_MODE = os.getenv("LUMINARK_MODE", "docker").lower()
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+STABILITY_THRESHOLD = float(os.getenv("LUMINARK_STABILITY_THRESHOLD", "3.0"))
+CODEWRITER_API_KEY = os.getenv("CODEWRITER_API_KEY")
+CODEWRITER_DEMO_KEY = os.getenv("CODEWRITER_DEMO_KEY")
 CORS_ORIGINS         = [
     origin.strip()
     for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -70,10 +72,10 @@ CORS_ORIGINS         = [
 ]
 
 # Redis key prefixes
-_KEY_V_SERIES    = "luminark:v_series:{ctx}"
-_KEY_STAGE_SEQ   = "luminark:stage_seq:{ctx}"
-_KEY_AUDIT       = "luminark:audit:{ctx}"
-_KEY_LATEST      = "luminark:latest:{ctx}"
+_KEY_V_SERIES = "luminark:v_series:{ctx}"
+_KEY_STAGE_SEQ = "luminark:stage_seq:{ctx}"
+_KEY_AUDIT = "luminark:audit:{ctx}"
+_KEY_LATEST = "luminark:latest:{ctx}"
 _KEY_VERDICT_CTR = "luminark:verdicts:{verdict}"
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -119,9 +121,7 @@ def _get_redis() -> redis.Redis | None:
                 _redis_client.close()
             _redis_client = None
     try:
-        _redis_client = redis.from_url(
-            REDIS_URL, decode_responses=True, socket_connect_timeout=3
-        )
+        _redis_client = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=3)
         _redis_client.ping()
         return _redis_client
     except Exception as exc:
@@ -199,7 +199,9 @@ async def lifespan(app: FastAPI):
         if EXEC_MODE != "docker":
             raise RuntimeError("Production requires Docker execution mode.")
         if not _verify_docker_runtime(require_image=True):
-            raise RuntimeError("Production requires a reachable Docker daemon and the configured sandbox image.")
+            raise RuntimeError(
+                "Production requires a reachable Docker daemon and the configured sandbox image."
+            )
         if not CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS):
             raise RuntimeError("Production CORS_ORIGINS must contain explicit HTTPS origins.")
     _get_bridge()
@@ -243,14 +245,22 @@ app.add_middleware(
 
 
 class GovernRequest(BaseModel):
-    code: str = Field(..., min_length=1, max_length=100_000, description="Python source code to govern")
-    task_description: str = Field("", max_length=2_000, description="Human-readable task description")
-    context_id: str = Field("default", pattern=r"^[A-Za-z0-9_-]{1,64}$", description="ID for telemetry grouping")
+    code: str = Field(
+        ..., min_length=1, max_length=100_000, description="Python source code to govern"
+    )
+    task_description: str = Field(
+        "", max_length=2_000, description="Human-readable task description"
+    )
+    context_id: str = Field(
+        "default", pattern=r"^[A-Za-z0-9_-]{1,64}$", description="ID for telemetry grouping"
+    )
     prev_stage: int | None = Field(None, ge=0, le=9)
 
 
 class StageReportRequest(BaseModel):
-    code: str = Field(..., min_length=1, max_length=100_000, description="Python source code to classify")
+    code: str = Field(
+        ..., min_length=1, max_length=100_000, description="Python source code to classify"
+    )
     context_id: str = Field("default", pattern=r"^[A-Za-z0-9_-]{1,64}$")
 
 
@@ -338,7 +348,9 @@ def govern(request: Request, body: GovernRequest, api_key: str = Depends(verify_
         )
     except Exception as exc:
         logger.error(f"Bridge govern() raised: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Governance operation failed. See server logs.") from exc
+        raise HTTPException(
+            status_code=500, detail="Governance operation failed. See server logs."
+        ) from exc
 
     result_dict = result.to_dict()
     _persist_telemetry(r, body.context_id, result_dict)
@@ -358,14 +370,18 @@ def govern(request: Request, body: GovernRequest, api_key: str = Depends(verify_
 
 @app.post("/stage-report")
 @limiter.limit("60/minute")
-def stage_report(request: Request, body: StageReportRequest, api_key: str = Depends(verify_api_key)):
+def stage_report(
+    request: Request, body: StageReportRequest, api_key: str = Depends(verify_api_key)
+):
     """Quick SAP stage classification — no full governance loop."""
     bridge = _get_bridge()
     try:
         report = bridge.get_stage_report(body.code)
     except Exception as exc:
         logger.error(f"stage_report error: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Stage report failed. See server logs.") from exc
+        raise HTTPException(
+            status_code=500, detail="Stage report failed. See server logs."
+        ) from exc
 
     return {
         "context_id": body.context_id,
@@ -427,7 +443,9 @@ def get_telemetry(
         }
     except Exception as exc:
         logger.error(f"Telemetry read failed: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Telemetry read failed. See server logs.") from exc
+        raise HTTPException(
+            status_code=500, detail="Telemetry read failed. See server logs."
+        ) from exc
 
 
 @app.get("/health")
@@ -436,9 +454,10 @@ def health():
     r = _get_redis()
     _get_bridge()
     docker_status = (
-        "available" if _verify_docker_runtime(require_image=True)
-        else "unavailable"
-    ) if EXEC_MODE == "docker" else "local-development-only"
+        ("available" if _verify_docker_runtime(require_image=True) else "unavailable")
+        if EXEC_MODE == "docker"
+        else "local-development-only"
+    )
     return {
         "status": "ok" if docker_status == "available" or EXEC_MODE == "local" else "degraded",
         "service": "LUMINARK Live Bridge",
