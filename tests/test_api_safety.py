@@ -84,9 +84,17 @@ def test_docker_execution_includes_hardening_flags(monkeypatch):
     assert result.success
     command = captured["command"]
     for flag in (
-        "--network", "none", "--read-only", "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges:true", "--user", "1001:1001",
-        "--pids-limit", "64",
+        "--network",
+        "none",
+        "--read-only",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "--user",
+        "1001:1001",
+        "--pids-limit",
+        "64",
     ):
         assert flag in command
 
