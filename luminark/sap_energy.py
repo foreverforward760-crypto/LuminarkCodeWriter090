@@ -14,23 +14,23 @@ To update constants or logic, edit:
 
 # Re-export everything from the canonical source
 from luminark.sap_energy_layer import (
-    SAPStage,
-    VESSEL_OF_GROUNDING_TRAP_AMPLIFIER,
+    TRAP_ENERGY_HIGH,
+    TRAP_ENERGY_LOW,
+    TRAP_ENERGY_MAXIMUM,
+    TRAP_ENERGY_MODERATE,
+    TRAP_ENERGY_NONE,
     VESSEL_OF_GROUNDING_CHAMBER_A,
     VESSEL_OF_GROUNDING_CHAMBER_B,
     VESSEL_OF_GROUNDING_CONSTRUCT,
-    TRAP_ENERGY_NONE,
-    TRAP_ENERGY_LOW,
-    TRAP_ENERGY_MODERATE,
-    TRAP_ENERGY_HIGH,
-    TRAP_ENERGY_MAXIMUM,
-    Stage8TrapResult,
-    Stage5BifurcationResult,
+    VESSEL_OF_GROUNDING_TRAP_AMPLIFIER,
     EvaluationResult,
-    evaluate_vessel_of_grounding_trap,
+    SAPStage,
+    Stage5BifurcationResult,
+    Stage8TrapResult,
     evaluate_dynamo_of_will_bifurcation,
-    trap_energy,
     evaluate_trap,
+    evaluate_vessel_of_grounding_trap,
+    trap_energy,
 )
 
 # Legacy aliases — preserved for any CodeWriter internal code that used
