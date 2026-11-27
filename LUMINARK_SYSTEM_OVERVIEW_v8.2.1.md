@@ -111,29 +111,29 @@ At Stage 5, the system reaches the narrowest point of the torus (bilateral thres
 ```python
 @dataclass
 class SystemState:
-    stage: int                          # 0-9
-    stage_name: str                     # Canonical name
-    nsdt_vector: NSDTVector            # (S, A, C, T)
-    
+    stage: int  # 0-9
+    stage_name: str  # Canonical name
+    nsdt_vector: NSDTVector  # (S, A, C, T)
+
     # Tumbling Inversion
-    is_even_stage: bool                # Even/odd parity
-    tumbling_inversion_state: str      # "Physically Stable / Consciously Unstable"
-    
+    is_even_stage: bool  # Even/odd parity
+    tumbling_inversion_state: str  # "Physically Stable / Consciously Unstable"
+
     # Stage 5 Middle Path Gateway (7 properties)
     witness_position: WitnessPosition  # Navigator/Passenger, bilateral threshold, etc.
-    middle_path_accessible: bool       # Perpendicular axis visible?
-    observer_effect_active: bool       # Conscious choice active?
+    middle_path_accessible: bool  # Perpendicular axis visible?
+    observer_effect_active: bool  # Conscious choice active?
     observer_effect_multiplier: float  # 1.35 or 1.0
-    
+
     # Arc Direction
-    arc_direction: str                 # "ascending" or "descending"
-    arc_confidence: float              # 0.0-1.0
-    
+    arc_direction: str  # "ascending" or "descending"
+    arc_confidence: float  # 0.0-1.0
+
     # Stage 6-8 Specific Context
-    stage_context: dict                # Flow quality, crucible mode, crystallization outcome
-    
+    stage_context: dict  # Flow quality, crucible mode, crystallization outcome
+
     # Recommended Action
-    recommended_action: str            # Specific guidance for this stage
+    recommended_action: str  # Specific guidance for this stage
 ```
 
 #### Capabilities:
