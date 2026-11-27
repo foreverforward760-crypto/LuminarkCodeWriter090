@@ -1,5 +1,5 @@
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -8,8 +8,8 @@ from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import main as api
 import luminark_live_bridge as bridge_module
+import main as api
 from luminark_live_bridge import ExecutionMode, LuminarkLiveBridge
 
 
