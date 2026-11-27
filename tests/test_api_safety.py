@@ -108,7 +108,10 @@ def test_telemetry_persists_metadata_not_submitted_or_generated_code():
             self.values.setdefault(key, []).append(value)
 
         def ltrim(self, key, start, end):
-            self.values[key] = self.values.get(key, [])[start : end + 1]
+            items = self.values.get(key, [])
+            start = max(0, len(items) + start) if start < 0 else start
+            end = len(items) + end if end < 0 else end
+            self.values[key] = items[start : end + 1]
 
         def expire(self, key, seconds):
             self.ttls[key] = seconds
@@ -140,5 +143,8 @@ def test_telemetry_persists_metadata_not_submitted_or_generated_code():
     assert "SECRET_SOURCE_CODE_SHOULD_NOT_BE_STORED" not in stored
     assert "PRIVATE_CODE" not in stored
     assert "private diagnostic text" not in stored
+    assert "PASS" in stored
+    assert fake.ttls["luminark:v_series:safe_context"] == api.TELEMETRY_TTL_SECONDS
+    assert fake.ttls["luminark:stage_seq:safe_context"] == api.TELEMETRY_TTL_SECONDS
     assert fake.ttls["luminark:audit:safe_context"] == api.TELEMETRY_TTL_SECONDS
     assert fake.ttls["luminark:latest:safe_context"] == api.TELEMETRY_TTL_SECONDS
