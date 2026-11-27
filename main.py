@@ -80,6 +80,7 @@ _KEY_VERDICT_CTR = "luminark:verdicts:{verdict}"
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
+
 def verify_api_key(x_codewriter_api_key: str | None = Header(None)) -> str:
     if not CODEWRITER_API_KEY or len(CODEWRITER_API_KEY) < 32:
         raise HTTPException(
