@@ -148,3 +148,8 @@ def test_telemetry_persists_metadata_not_submitted_or_generated_code():
     assert fake.ttls["luminark:stage_seq:safe_context"] == api.TELEMETRY_TTL_SECONDS
     assert fake.ttls["luminark:audit:safe_context"] == api.TELEMETRY_TTL_SECONDS
     assert fake.ttls["luminark:latest:safe_context"] == api.TELEMETRY_TTL_SECONDS
+
+
+def test_production_docker_runtime_check_fails_closed_without_docker_cli(monkeypatch):
+    monkeypatch.setattr(api.shutil, "which", lambda name: None)
+    assert api._verify_docker_runtime(require_image=True) is False
