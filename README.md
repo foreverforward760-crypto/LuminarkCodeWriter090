@@ -111,6 +111,8 @@ No independent accuracy, security, or production-readiness claim is made in this
 
 ## Attribution and Rights Review
 
+## Attribution and Rights Review
+
 The repository has no root `LICENSE` file. The package metadata labels the project proprietary, but no license text is supplied. Do not assume a third-party reuse or redistribution license. Third-party components, AI-service terms, and code provenance require review before licensing or sale.
 
 *Project contact: LuminarkMeridian@gmail.com*
